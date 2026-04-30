@@ -1,0 +1,101 @@
+<!-- the file is of type html -->
+<!DOCTYPE html>
+
+<head>
+    <!-- the title in the browser tab -->
+    <title>Map</title>
+    <!-- the link for loading map design -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+</head>
+
+<body>
+    <!-- kind of a "bok" where the map will appear in -->
+    <div id = "map"  style = "height: 500px; width: 500px"></div>
+    <!-- loading the library -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        <!-- creating a map that it's center is Israel and zoom value is 10 -->
+        const map = L.map('map').setView([31.8, 35.2], 10);
+
+        <!-- adding the map itself - the roads and so on... -->
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '© OpenStreetMap contributors'}).addTo(map);
+
+        <!-- mark management layer (to prevent duplicates on refresh) -->
+        let markersLayer = L.layerGroup().addTo(map);
+
+        <!-- a function that fetches data from the server -->
+        async function loadLocations() {
+
+            try {
+                <!-- addresses the API -->
+                const response = await fetch("http://127.0.0.1:8000/locations");
+
+                <!-- converts JSON to an object -->
+                const data = await response.json();
+
+                <!-- clearing the map -->
+                markersLayer.clearLayers();
+
+                <!-- goes over every location -->
+                data.forEach(location => {
+                    <!-- creates a point and adds it to the map -->
+                    L.marker([location.latitude, location.longitude]).addTo(markersLayer)
+                    <!-- the text that pops up on click -->
+                    .bindPopup("ID: " + location.student_id); });
+
+                console.log("The map updated");
+            }
+            catch (error) {
+                console.error("Error retrieving data from the server:", error);
+            }
+
+        }
+
+        <!-- return time in a special (the requested format) -->
+        function formatTime() {
+            <!-- creates a date and time object now -->
+            const now = new Date();
+
+            <!-- getting the year, month and day -->
+            const year = now.getUTCFullYear();
+            const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(now.getUTCDate()).padStart(2, '0');
+
+            <!-- getting the hour, minutes and seconds -->
+            const hours = String(now.getUTCHours()).padStart(2, '0');
+            const minutes = String(now.getUTCMinutes()).padStart(2, '0');
+            const seconds = String(now.getUTCSeconds()).padStart(2, '0');
+
+            <!-- constructs a string according to the required format -->
+            return `${year} ${month} ${day}T${hours}:${minutes}:${seconds}Z`;
+        }
+
+
+        setInterval(async () => {
+            <!-- ends a request to your server to send data -->
+            await fetch("http://127.0.0.1:8000/location", {
+                method: "POST",
+                <!-- tells the server: “I am sending JSON” -->
+                headers: {"Content-Type": "application/json"},
+                <!-- converts a JavaScript object to JSON -->
+                body: JSON.stringify({
+                    ID: "123456789",
+                    Coordinates: { Latitude: { Degrees: 31, Minutes: 46, Seconds: 0 },
+                                   Longitude: { Degrees: 35, Minutes: 13, Seconds: 0 }},
+                    <!-- request is send every minute -->
+                    Time: formatTime()})});}, 60000);
+
+        <!-- reload every 5 seconds -->
+        setInterval(loadLocations, 5000);
+
+        <!-- running for the first time -->
+        loadLocations();
+    </script>
+</body>
+
+</html>
+
+
+
+
+
