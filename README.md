@@ -91,7 +91,7 @@ Register a new user (teacher) with ID, full name (first + last names) and class 
 
 **Parameters:**
 
-Teacher (schemas.Teacher) contins:
+Teacher (schemas.Teacher) contains:
 - `id` (string, required): The ID of the teacher (must be of 9 digits).
 - `full_name` (string, required): The teacher's full name.
 - `class_number` (int, required): The class number that the teacher teaches at.
@@ -175,7 +175,7 @@ Register a new user (student) with ID, full name (first + last names) and class 
 
 **Parameters:**
 
-Student (schemas.Student) contins:
+Student (schemas.Student) contains:
 - `id` (string, required): The ID of the student (must be of 9 digits).
 - `full_name` (string, required): The student's full name.
 - `class_number` (int, required): The class number that the student studies at.

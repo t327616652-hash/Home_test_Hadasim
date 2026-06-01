@@ -10,7 +10,7 @@
 
 <body>
     <!-- kind of a "bok" where the map will appear in -->
-    <div id = "map"  style = "height: 500px; width: 500px"></div>
+    <div id = "map"  style = "height: 700px; width: 1000px"></div>
     <!-- loading the library -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
@@ -23,14 +23,32 @@
         <!-- mark management layer (to prevent duplicates on refresh) -->
         let markersLayer = L.layerGroup().addTo(map);
 
+        <!-- red icon for a far student -->
+        const redIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
         <!-- a function that fetches data from the server -->
         async function loadLocations() {
-
             try {
-                <!-- addresses the API -->
-                const response = await fetch("http://127.0.0.1:8000/locations");
+                const teacherData = {
+                    ID: "123456789",
+                    Coordinates: {
+                        Latitude: { Degrees: 31, Minutes: 46, Seconds: 0 },
+                        Longitude: { Degrees: 35, Minutes: 13, Seconds: 0 }},
+                    Time: formatTime()};
 
-                <!-- converts JSON to an object -->
+                const response = await fetch("http://127.0.0.1:8000/locations/alert", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json",
+                        "teacher-id": "123456789"},
+                    body: JSON.stringify(teacherData)});
+
                 const data = await response.json();
 
                 <!-- clearing the map -->
@@ -38,15 +56,22 @@
 
                 <!-- goes over every location -->
                 data.forEach(location => {
-                    <!-- creates a point and adds it to the map -->
-                    L.marker([location.latitude, location.longitude]).addTo(markersLayer)
-                    <!-- the text that pops up on click -->
-                    .bindPopup("ID: " + location.student_id); });
+                    let markerOptions = {};
+                    let popupContent = "ID: " + location.student_id;
+
+                    if (location.is_far) {
+                        markerOptions = { icon: redIcon };
+                        popupContent += "<br><b style='color:red;'>far!</b>";
+                    }
+
+                    L.marker([location.latitude, location.longitude], markerOptions)
+                        .addTo(markersLayer)
+                        .bindPopup(popupContent);});
 
                 console.log("The map updated");
             }
             catch (error) {
-                console.error("Error retrieving data from the server:", error);
+                console.error("Error:", error);
             }
 
         }
@@ -73,7 +98,7 @@
 
         setInterval(async () => {
             <!-- ends a request to your server to send data -->
-            await fetch("http://127.0.0.1:8000/location", {
+            await fetch("http://127.0.0.1:8000/locations", {
                 method: "POST",
                 <!-- tells the server: “I am sending JSON” -->
                 headers: {"Content-Type": "application/json"},
@@ -94,6 +119,8 @@
 </body>
 
 </html>
+
+
 
 
 

@@ -3,6 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 import models, schemas, database
 from fastapi.middleware.cors import CORSMiddleware
+from math import radians, sin, cos, sqrt, atan2
 
 
 
@@ -10,6 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 MINUTES_IN_A_DEGREE = 60
 # there are 3600 seconds in a degree
 SECONDS_IN_A_DEGREE = 3600
+
+
+ISRAEL_RADIUS_IN_KM = 6371
 
 
 # create the database
@@ -20,12 +24,7 @@ app = FastAPI()
 
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],)
 
 
 
@@ -150,13 +149,43 @@ def update_location(location_data: schemas.Location, db: Session = Depends(datab
 
 
 
-''' get_locations - returns a list of all the locations
+''' get_locations - returns a list of all the locations - distances between the teacher and the students
       the method:
          uses the session created in the database.py file because information needs to be transferred into the database '''
 
-@app.get("/locations")
-def get_locations(db: Session = Depends(database.get_db)):
-    return db.query(models.Location).all()
+@app.post("/locations/alert")
+def get_locations(teacher_location: schemas.Location, teacher_id: str = Header(...), db: Session = Depends(database.get_db)):
+    # checking if the attempt to access the data is by a teacher
+    is_teacher(teacher_id, db)
+
+    # all the locations
+    locations = db.query(models.Location).all()
+
+    # the longitude and latitude of the location that received
+    longitude = teacher_location.Coordinates.Longitude
+    latitude = teacher_location.Coordinates.Latitude
+
+    # the converted to decimal longitude and latitude of the location that received
+    teacher_longitude = convert_dms_to_decimal(longitude.Degrees, longitude.Minutes, longitude.Seconds)
+    teacher_latitude = convert_dms_to_decimal(latitude.Degrees, latitude.Minutes, latitude.Seconds)
+
+    # the list of all the distances between the teacher and the students
+    students_distances = []
+
+    for location in locations:
+        # calculating the distance between the teacher and a student
+        distance = calculate_distance(teacher_longitude, teacher_latitude, location.longitude, location.latitude)
+
+        # adding the distance of the student from the teacher
+        students_distances.append({"student_id": location.student_id,
+                                   "longitude": location.longitude,
+                                   "latitude": location.latitude,
+                                   "is_far": distance > 3})
+
+    return students_distances
+
+
+
 
 
 
@@ -315,6 +344,35 @@ def convert_dms_to_decimal(degrees: int, minutes: int, seconds: int) -> float:
     # the formula to convert DMS to decimal
     decimal = degrees + (minutes / MINUTES_IN_A_DEGREE) + (seconds / SECONDS_IN_A_DEGREE)
     return decimal
+
+
+
+
+
+
+
+''' calculate_distance - calculating a distance between 2 points.
+      the method expects to receive the values of the 2 points = longitude1, latitude1, longitude2 and latitude2.'''
+
+def calculate_distance(longitude1, latitude1, longitude2, latitude2):
+    # the differences between the latitudes and the longitude
+    longitude_difference = radians(longitude2 - longitude1)
+    latitude_difference = radians(latitude2 - latitude1)
+
+    # convert the latitudes of the 2 points from degrees to radians
+    # because trigonometric functions (such as sin and cos) always work with radians
+    phi1 = radians(latitude1)
+    phi2 = radians(latitude2)
+
+    # the squared distance between the points based on their angles - according to the Haversine formula
+    a = sin(latitude_difference / 2) ** 2 + cos(phi1) * cos(phi2) * sin(longitude_difference / 2) ** 2
+
+    # the angular distance in radians
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    # returning the final distance in kilometers
+    return ISRAEL_RADIUS_IN_KM * c
+
 
 
 

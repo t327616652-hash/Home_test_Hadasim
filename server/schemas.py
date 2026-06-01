@@ -61,6 +61,8 @@ class TeacherCreate(BaseModel):
 
 
 
+
+
 # a coordinate that represents longitude or latitude.
 class DMSCoordinate(BaseModel):
     Degrees: int
